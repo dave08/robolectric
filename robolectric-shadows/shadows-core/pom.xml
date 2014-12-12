@@ -14,7 +14,7 @@
     <!-- Test Dependencies -->
     <dependency>
       <groupId>junit</groupId>
-      <artifactId>junit-dep</artifactId>
+      <artifactId>junit</artifactId>
       <scope>test</scope>
     </dependency>
 
@@ -54,8 +54,9 @@
     </dependency>
 
     <dependency>
-      <groupId>org.robolectric</groupId>
-      <artifactId>android-all</artifactId>
+      <groupId>com.ibm.icu</groupId>
+      <artifactId>icu4j</artifactId>
+      <version>53.1</version>
     </dependency>
 
     <!-- SQLite Dependencies -->
@@ -254,37 +255,66 @@
 
   <profiles>
     <profile>
-      <id>android-15</id>
-      <properties>
-        <api>15</api>
-      </properties>
-    </profile>
-    <profile>
       <id>android-16</id>
+        <dependencies>
+            <dependency>
+                <groupId>org.robolectric</groupId>
+                <artifactId>android-all</artifactId>
+                <version>4.1.2_r1-robolectric-0</version>
+            </dependency>
+        </dependencies>
       <properties>
         <api>16</api>
       </properties>
     </profile>
     <profile>
       <id>android-17</id>
+        <dependencies>
+            <dependency>
+                <groupId>org.robolectric</groupId>
+                <artifactId>android-all</artifactId>
+                <version>4.2.2_r1.2-robolectric-0</version>
+            </dependency>
+        </dependencies>
       <properties>
         <api>17</api>
       </properties>
     </profile>
     <profile>
       <id>android-18</id>
+        <dependencies>
+            <dependency>
+                <groupId>org.robolectric</groupId>
+                <artifactId>android-all</artifactId>
+                <version>4.3_r2-robolectric-0</version>
+            </dependency>
+        </dependencies>
       <properties>
         <api>18</api>
       </properties>
     </profile>
     <profile>
       <id>android-19</id>
+        <dependencies>
+            <dependency>
+                <groupId>org.robolectric</groupId>
+                <artifactId>android-all</artifactId>
+                <version>4.4_r1-robolectric-0</version>
+            </dependency>
+        </dependencies>
       <properties>
         <api>19</api>
       </properties>
     </profile>
     <profile>
       <id>android-21</id>
+        <dependencies>
+            <dependency>
+                <groupId>org.robolectric</groupId>
+                <artifactId>android-all</artifactId>
+                <version>5.0.0_r2-robolectric-0</version>
+            </dependency>
+        </dependencies>
       <properties>
         <api>21</api>
       </properties>
@@ -343,22 +373,6 @@
                 </goals>
                 <configuration>
                   <artifacts>
-                    <artifact>
-                      <file>dist/shadows-core-3.0-SNAPSHOT-15.jar</file>
-                      <type>jar</type>
-                      <classifier>15</classifier>
-                    </artifact>
-                    <artifact>
-                      <file>dist/shadows-core-3.0-SNAPSHOT-15-javadoc.jar</file>
-                      <type>jar</type>
-                      <classifier>15-javadoc</classifier>
-                    </artifact>
-                    <artifact>
-                      <file>dist/shadows-core-3.0-SNAPSHOT-15-sources.jar</file>
-                      <type>jar</type>
-                      <classifier>15-sources</classifier>
-                    </artifact>
-
                     <artifact>
                       <file>dist/shadows-core-3.0-SNAPSHOT-16.jar</file>
                       <type>jar</type>

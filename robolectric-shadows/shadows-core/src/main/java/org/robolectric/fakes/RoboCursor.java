@@ -1,7 +1,10 @@
 package org.robolectric.fakes;
 
+import android.database.Cursor;
+import android.database.DatabaseUtils;
 import android.net.Uri;
 
+import java.sql.Blob;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,6 +53,16 @@ public class RoboCursor extends BaseCursor {
   }
 
   @Override
+  public int getInt(int columnIndex) {
+    return (Integer) results[resultsIndex][columnIndex];
+  }
+
+  @Override
+  public int getCount() {
+    return results.length;
+  }
+
+  @Override
   public boolean moveToNext() {
     ++resultsIndex;
     return resultsIndex < results.length;
@@ -60,7 +73,22 @@ public class RoboCursor extends BaseCursor {
     closeWasCalled = true;
   }
 
-  public void setColumnNames(ArrayList<String> columnNames) {
+  @Override
+  public int getColumnCount() {
+    return results[0].length;
+  }
+
+  @Override
+  public String getColumnName(int index) {
+    return columnNames.get(index);
+  }
+
+  @Override
+  public int getType(int columnIndex) {
+    return DatabaseUtils.getTypeOfObject(results[0][columnIndex]);
+  }
+
+  public void setColumnNames(List<String> columnNames) {
     this.columnNames = columnNames;
   }
 

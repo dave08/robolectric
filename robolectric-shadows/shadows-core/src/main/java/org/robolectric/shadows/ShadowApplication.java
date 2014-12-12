@@ -24,7 +24,6 @@ import android.view.LayoutInflater;
 import android.widget.ListPopupWindow;
 import android.widget.PopupWindow;
 import android.widget.Toast;
-import android.util.MutableBoolean;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.manifest.AndroidManifest;
 import org.robolectric.Shadows;
@@ -45,6 +44,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static android.content.pm.PackageManager.PERMISSION_DENIED;
 import static android.content.pm.PackageManager.PERMISSION_GRANTED;
@@ -66,7 +66,8 @@ public class ShadowApplication extends ShadowContextWrapper {
   private List<Intent> startedServices = new ArrayList<Intent>();
   private List<Intent> stoppedServies = new ArrayList<Intent>();
   private List<Intent> broadcastIntents = new ArrayList<Intent>();
-  private List<ServiceConnection> unboundServiceConnections = new ArrayList<ServiceConnection>();
+  private List<ServiceConnection> boundServiceConnections = new ArrayList<>();
+  private List<ServiceConnection> unboundServiceConnections = new ArrayList<>();
   private List<Wrapper> registeredReceivers = new ArrayList<Wrapper>();
   private Map<String, Intent> stickyIntents = new LinkedHashMap<String, Intent>();
   private Looper mainLooper = ShadowLooper.myLooper();
@@ -83,12 +84,14 @@ public class ShadowApplication extends ShadowContextWrapper {
   private AssetManager assetManager;
   private Set<String> grantedPermissions = new HashSet<String>();
 
+  private Map<Intent, ServiceConnectionDataWrapper> serviceConnectionDataForIntent = new HashMap<>();
+  private Map<ServiceConnection, ServiceConnectionDataWrapper> serviceConnectionDataForServiceConnection = new HashMap<>();
+  //default values for bindService
+  private ServiceConnectionDataWrapper defaultServiceConnectionData = new ServiceConnectionDataWrapper(null, null);
+
   // these are managed by the AppSingletonizier... kinda gross, sorry [xw]
   LayoutInflater layoutInflater;
   AppWidgetManager appWidgetManager;
-  private ServiceConnection serviceConnection;
-  private ComponentName componentNameForBindService;
-  private IBinder serviceForBindService;
   private List<String> unbindableActions = new ArrayList<String>();
 
   private boolean strictI18n = false;
@@ -267,12 +270,17 @@ public class ShadowApplication extends ShadowContextWrapper {
   }
 
   public void setComponentNameAndServiceForBindService(ComponentName name, IBinder service) {
-    this.componentNameForBindService = name;
-    this.serviceForBindService = service;
+    defaultServiceConnectionData = new ServiceConnectionDataWrapper(name, service);
+  }
+
+  public void setComponentNameAndServiceForBindServiceForIntent(Intent intent, ComponentName name, IBinder service) {
+    serviceConnectionDataForIntent.put(intent, new ServiceConnectionDataWrapper(name, service));
   }
 
   @Implementation
-  public boolean bindService(Intent intent, final ServiceConnection serviceConnection, int i) {
+  public boolean bindService(final Intent intent, final ServiceConnection serviceConnection, int i) {
+    boundServiceConnections.add(serviceConnection);
+    unboundServiceConnections.remove(serviceConnection);
     if (unbindableActions.contains(intent.getAction())) {
       return false;
     }
@@ -280,19 +288,37 @@ public class ShadowApplication extends ShadowContextWrapper {
     shadowOf(Looper.getMainLooper()).post(new Runnable() {
       @Override
       public void run() {
-        serviceConnection.onServiceConnected(componentNameForBindService, serviceForBindService);
+        final ServiceConnectionDataWrapper serviceConnectionDataWrapper;
+        if (serviceConnectionDataForIntent.containsKey(intent)) {
+          serviceConnectionDataWrapper = serviceConnectionDataForIntent.get(intent);
+        } else {
+          serviceConnectionDataWrapper = defaultServiceConnectionData;
+        }
+        serviceConnectionDataForServiceConnection.put(serviceConnection, serviceConnectionDataWrapper);
+        serviceConnection.onServiceConnected(serviceConnectionDataWrapper.componentNameForBindService, serviceConnectionDataWrapper.binderForBindService);
       }
     }, 0);
     return true;
   }
 
+  public List<ServiceConnection> getBoundServiceConnections() {
+    return boundServiceConnections;
+  }
+
   @Override @Implementation
   public void unbindService(final ServiceConnection serviceConnection) {
     unboundServiceConnections.add(serviceConnection);
+    boundServiceConnections.remove(serviceConnection);
     shadowOf(Looper.getMainLooper()).post(new Runnable() {
       @Override
       public void run() {
-        serviceConnection.onServiceDisconnected(componentNameForBindService);
+        final ServiceConnectionDataWrapper serviceConnectionDataWrapper;
+        if (serviceConnectionDataForServiceConnection.containsKey(serviceConnection)) {
+          serviceConnectionDataWrapper = serviceConnectionDataForServiceConnection.get(serviceConnection);
+        } else {
+          serviceConnectionDataWrapper = defaultServiceConnectionData;
+        }
+        serviceConnection.onServiceDisconnected(serviceConnectionDataWrapper.componentNameForBindService);
       }
     }, 0);
   }
@@ -428,7 +454,7 @@ public class ShadowApplication extends ShadowContextWrapper {
     return result;
   }
 
-  private void postIntent(Intent intent, Wrapper wrapper, final MutableBoolean abort) {
+  private void postIntent(Intent intent, Wrapper wrapper, final AtomicBoolean abort) {
     final Handler scheduler = (wrapper.scheduler != null) ? wrapper.scheduler : this.mainHandler;
     final BroadcastReceiver receiver = wrapper.broadcastReceiver;
     final ShadowBroadcastReceiver shReceiver = Shadows.shadowOf(receiver);
@@ -442,7 +468,7 @@ public class ShadowApplication extends ShadowContextWrapper {
   }
 
   private void postToWrappers(List<Wrapper> wrappers, Intent intent, String receiverPermission) {
-    MutableBoolean abort = new MutableBoolean(false); // abort state is shared among all broadcast receivers
+    AtomicBoolean abort = new AtomicBoolean(false); // abort state is shared among all broadcast receivers
     for (Wrapper wrapper: wrappers) {
       postIntent(intent, wrapper, abort);
     }
@@ -794,5 +820,15 @@ public class ShadowApplication extends ShadowContextWrapper {
 
   private boolean hasMatchingPermission(String permission1, String permission2) {
     return permission1 == null ? permission2 == null : permission1.equals(permission2);
+  }
+
+  private static class ServiceConnectionDataWrapper {
+    public final ComponentName componentNameForBindService;
+    public final IBinder binderForBindService;
+
+    private ServiceConnectionDataWrapper(ComponentName componentNameForBindService, IBinder binderForBindService) {
+      this.componentNameForBindService = componentNameForBindService;
+      this.binderForBindService = binderForBindService;
+    }
   }
 }

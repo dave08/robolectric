@@ -11,8 +11,10 @@ import android.content.ServiceConnection;
 import android.media.MediaScannerConnection;
 import android.os.IBinder;
 
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.robolectric.Robolectric;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.TestRunners;
 import org.robolectric.internal.Shadow;
@@ -22,13 +24,21 @@ import static org.robolectric.Shadows.shadowOf;
 
 @RunWith(TestRunners.WithDefaults.class)
 public class ShadowServiceTest {
-  private final MyService service = new MyService();
-  private final ShadowService shadow = shadowOf(service);
-  private final Notification.Builder notBuilder = new Notification.Builder(
-      service).setSmallIcon(1).setContentTitle("Test")
-      .setContentText("Hi there");
+  private MyService service ;
+  private ShadowService shadow;
+  private Notification.Builder notBuilder;
+
   private final ShadowNotificationManager nm = shadowOf((NotificationManager) RuntimeEnvironment.application
       .getSystemService(Context.NOTIFICATION_SERVICE));
+
+  @Before
+  public void setup() {
+    service = Robolectric.setupService(MyService.class);
+    shadow = shadowOf(service);
+    notBuilder = new Notification.Builder(
+        service).setSmallIcon(1).setContentTitle("Test")
+        .setContentText("Hi there");
+  }
 
   @Test(expected = IllegalStateException.class)
   public void shouldComplainIfServiceIsDestroyedWithRegisteredBroadcastReceivers() throws Exception {
@@ -44,6 +54,16 @@ public class ShadowServiceTest {
     MyService service2 = new MyService();
     service2.registerReceiver(new AppWidgetProvider(), new IntentFilter());
     service1.onDestroy(); // should not throw exception
+  }
+
+  @Test
+  public void shouldUnbindServiceAtShadowApplication() {
+    ShadowApplication shadowApplication = shadowOf(RuntimeEnvironment.application);
+    ServiceConnection conn = Shadow.newInstanceOf(MediaScannerConnection.class);
+    service.bindService(new Intent("dummy"), conn, 0);
+    assertThat(shadowApplication.getUnboundServiceConnections().size()).isEqualTo(0);
+    service.unbindService(conn);
+    assertThat(shadowApplication.getUnboundServiceConnections().size()).isEqualTo(1);
   }
 
   @Test
@@ -119,7 +139,7 @@ public class ShadowServiceTest {
     assertThat(shadow.isStoppedBySelf()).isTrue();
   }
 
-  private static class MyService extends Service {
+  public static class MyService extends Service {
     @Override
     public void onDestroy() {
       super.onDestroy();

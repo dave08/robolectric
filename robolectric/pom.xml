@@ -14,7 +14,7 @@
     <!-- Test Dependencies -->
     <dependency>
       <groupId>junit</groupId>
-      <artifactId>junit-dep</artifactId>
+      <artifactId>junit</artifactId>
     </dependency>
 
     <dependency>
@@ -55,6 +55,12 @@
       <groupId>org.robolectric</groupId>
       <artifactId>shadows-core</artifactId>
       <classifier>${robolectric.api.level}</classifier>
+    </dependency>
+
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk16</artifactId>
+      <version>1.46</version>
     </dependency>
 
     <!-- Project Dependencies -->

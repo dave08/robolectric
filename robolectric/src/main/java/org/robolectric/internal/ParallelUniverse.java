@@ -6,6 +6,7 @@ import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
 import android.content.res.Resources;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.robolectric.*;
 import org.robolectric.annotation.Config;
 import org.robolectric.internal.fakes.RoboInstrumentation;
@@ -16,7 +17,9 @@ import org.robolectric.res.builder.DefaultPackageManager;
 import org.robolectric.util.ReflectionHelpers;
 import org.robolectric.ShadowsAdapter;
 
+import java.io.File;
 import java.lang.reflect.Method;
+import java.security.Security;
 
 import static org.robolectric.util.ReflectionHelpers.ClassParameter;
 
@@ -69,6 +72,8 @@ public class ParallelUniverse implements ParallelUniverseInterface {
     } else {
       resourceLoader = systemResourceLoader;
     }
+
+    Security.insertProviderAt(new BouncyCastleProvider(), 1);
 
     shadowsAdapter.setSystemResources(systemResourceLoader);
     String qualifiers = addVersionQualifierToQualifiers(config.qualifiers());
@@ -130,7 +135,24 @@ public class ParallelUniverse implements ParallelUniverseInterface {
   @Override
   public void tearDownApplication() {
     if (RuntimeEnvironment.application != null) {
+      clearFiles(new File(RuntimeEnvironment.application.getApplicationInfo().dataDir));
       RuntimeEnvironment.application.onTerminate();
+    }
+  }
+
+  private static void clearFiles(File dir) {
+    if (dir != null && dir.isDirectory()) {
+      File[] files = dir.listFiles();
+      if (files != null) {
+        for (File f : files) {
+          if (f.isDirectory()) {
+            clearFiles(f);
+          }
+          f.delete();
+        }
+      }
+      dir.delete();
+      dir.getParentFile().delete();
     }
   }
 

@@ -44,7 +44,7 @@ public class Converter<T> {
 
     TypedResource attrTypeData = resourceLoader.getValue(attribute.resName, qualifiers);
     if (attrTypeData == null) {
-      throw new Resources.NotFoundException("Couldn't find " + attribute.resName + " attr data");
+      return;
     }
 
     AttrData attrData = (AttrData) attrTypeData.getData();
@@ -57,11 +57,8 @@ public class Converter<T> {
     String format = attrData.getFormat();
     String[] types = format.split("\\|");
 
-    // dereference resource and style references...
+    // TODO: Handle resource and style references
     if (attribute.isStyleReference()) {
-      ResName resName = attribute.getStyleReference();
-      // todo
-      System.out.println("TODO: Not handling " + attribute.value + " yet!");
       return;
     }
 
